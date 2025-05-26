@@ -30,6 +30,20 @@ function setupEventListeners() {
       closeModal();
     }
   });
+
+  // Close profile menu when clicking outside
+  document.addEventListener("click", function (event) {
+    const profileMenu = document.getElementById("profileMenu");
+    const profileInfo = document.querySelector(".profile-info");
+
+    if (
+      profileMenu &&
+      !profileMenu.contains(event.target) &&
+      !profileInfo.contains(event.target)
+    ) {
+      profileMenu.style.display = "none";
+    }
+  });
 }
 
 // Debounce function for search input
@@ -50,11 +64,41 @@ async function loadMedia() {
   try {
     const response = await fetch("/api/media");
     mediaItems = await response.json();
+
+    // Filter by current profile
+    const currentProfile = profileManager.getCurrentProfile();
+    const profileKey = `profile_${currentProfile.id}`;
+
+    // Store media items per profile in localStorage
+    const allProfileData = JSON.parse(
+      localStorage.getItem("profileMediaData") || "{}"
+    );
+    if (allProfileData[profileKey]) {
+      mediaItems = allProfileData[profileKey];
+    } else {
+      mediaItems = [];
+    }
+
     displayMedia(mediaItems);
+
+    // Update profile stats
+    profileManager.updateProfileStats(mediaItems);
   } catch (error) {
     console.error("Error loading media:", error);
     showError("Failed to load media items");
   }
+}
+
+// Save media items for current profile
+function saveMediaToProfile() {
+  const currentProfile = profileManager.getCurrentProfile();
+  const profileKey = `profile_${currentProfile.id}`;
+
+  const allProfileData = JSON.parse(
+    localStorage.getItem("profileMediaData") || "{}"
+  );
+  allProfileData[profileKey] = mediaItems;
+  localStorage.setItem("profileMediaData", JSON.stringify(allProfileData));
 }
 
 // Perform search with filters
@@ -63,19 +107,29 @@ async function performSearch() {
   const type = typeFilter.value;
   const status = statusFilter.value;
 
-  try {
-    const params = new URLSearchParams();
-    if (query) params.append("q", query);
-    if (type) params.append("type", type);
-    if (status) params.append("status", status);
+  let filtered = [...mediaItems];
 
-    const response = await fetch(`/api/search?${params}`);
-    const results = await response.json();
-    displayMedia(results);
-  } catch (error) {
-    console.error("Error searching media:", error);
-    showError("Failed to search media items");
+  // Filter by search query
+  if (query) {
+    filtered = filtered.filter(
+      (item) =>
+        item.title.toLowerCase().includes(query.toLowerCase()) ||
+        item.creator.toLowerCase().includes(query.toLowerCase()) ||
+        (item.genre && item.genre.toLowerCase().includes(query.toLowerCase()))
+    );
   }
+
+  // Filter by type
+  if (type) {
+    filtered = filtered.filter((item) => item.type === type);
+  }
+
+  // Filter by status
+  if (status) {
+    filtered = filtered.filter((item) => item.status === status);
+  }
+
+  displayMedia(filtered);
 }
 
 // Display media items
@@ -177,7 +231,7 @@ function createMediaCard(item) {
         ${
           item.notes
             ? `
-            <div style="margin-top: 10px; padding: 10px; background: #f8f9fa; border-radius: 5px; font-size: 0.9rem;">
+            <div style="margin-top: 10px; padding: 10px; background: var(--bg-color); border-radius: 5px; font-size: 0.9rem;">
                 <strong>Notes:</strong> ${escapeHtml(item.notes)}
             </div>
         `
@@ -199,8 +253,11 @@ function openAddModal() {
 // Edit media item
 async function editMedia(id) {
   try {
-    const response = await fetch(`/api/media/${id}`);
-    const item = await response.json();
+    const item = mediaItems.find((m) => m.id === id);
+    if (!item) {
+      showError("Media item not found");
+      return;
+    }
 
     editingId = id;
     modalTitle.textContent = "Edit Media";
@@ -229,15 +286,14 @@ async function deleteMedia(id) {
   }
 
   try {
-    const response = await fetch(`/api/media/${id}`, {
-      method: "DELETE",
-    });
-
-    if (response.ok) {
+    const index = mediaItems.findIndex((m) => m.id === id);
+    if (index !== -1) {
+      mediaItems.splice(index, 1);
+      saveMediaToProfile();
       showSuccess("Media item deleted successfully");
       loadMedia();
     } else {
-      throw new Error("Failed to delete media item");
+      throw new Error("Media item not found");
     }
   } catch (error) {
     console.error("Error deleting media:", error);
@@ -250,6 +306,7 @@ async function handleFormSubmit(event) {
   event.preventDefault();
 
   const formData = {
+    id: editingId || Date.now(),
     title: document.getElementById("title").value.trim(),
     creator: document.getElementById("creator").value.trim(),
     type: document.getElementById("type").value,
@@ -260,43 +317,79 @@ async function handleFormSubmit(event) {
       ? parseFloat(document.getElementById("rating").value)
       : null,
     notes: document.getElementById("notes").value.trim(),
+    createdAt: editingId
+      ? mediaItems.find((m) => m.id === editingId)?.createdAt
+      : new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
   try {
-    let response;
     if (editingId) {
-      response = await fetch(`/api/media/${editingId}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      const index = mediaItems.findIndex((m) => m.id === editingId);
+      if (index !== -1) {
+        mediaItems[index] = formData;
+      }
     } else {
-      response = await fetch("/api/media", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
-      });
+      mediaItems.push(formData);
     }
 
-    if (response.ok) {
-      showSuccess(
-        editingId
-          ? "Media item updated successfully"
-          : "Media item added successfully"
-      );
-      closeModal();
-      loadMedia();
-    } else {
-      throw new Error("Failed to save media item");
-    }
+    saveMediaToProfile();
+    showSuccess(
+      editingId
+        ? "Media item updated successfully"
+        : "Media item added successfully"
+    );
+    closeModal();
+    loadMedia();
   } catch (error) {
     console.error("Error saving media:", error);
     showError("Failed to save media item");
   }
+}
+
+// Generate AI Recommendations
+function generateRecommendations() {
+  if (mediaItems.length === 0) {
+    showError(
+      "Add some media items first to get personalized recommendations!"
+    );
+    return;
+  }
+
+  const recommendations = aiEngine.generateRecommendations(mediaItems);
+  displayRecommendations(recommendations);
+
+  // Show recommendations section
+  document.getElementById("recommendationsSection").style.display = "block";
+
+  showSuccess("AI recommendations generated based on your collection!");
+}
+
+// Display AI recommendations
+function displayRecommendations(recommendations) {
+  const grid = document.getElementById("recommendationsGrid");
+
+  if (recommendations.length === 0) {
+    grid.innerHTML = "<p>No recommendations available at the moment.</p>";
+    return;
+  }
+
+  grid.innerHTML = recommendations
+    .map(
+      (rec) => `
+    <div class="recommendation-card">
+      <div class="rec-title">${escapeHtml(rec.title)}</div>
+      <div class="rec-reason">${escapeHtml(rec.reason)}</div>
+      <div class="rec-confidence">
+        <span>${rec.confidence}% match</span>
+        <div class="confidence-bar">
+          <div class="confidence-fill" style="width: ${rec.confidence}%"></div>
+        </div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
 }
 
 // Close modal

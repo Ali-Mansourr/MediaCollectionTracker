@@ -15,27 +15,48 @@
         box-sizing: border-box;
       }
 
+      :root {
+        --primary-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        --bg-color: #f5f7fa;
+        --card-bg: white;
+        --text-color: #333;
+        --border-color: #e1e5e9;
+        --shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+
+      .dark-mode {
+        --bg-color: #1a1a2e;
+        --card-bg: #16213e;
+        --text-color: #eee;
+        --border-color: #0f3460;
+        --shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+      }
+
       body {
         font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--primary-gradient);
         min-height: 100vh;
         padding: 20px;
+        color: var(--text-color);
+        transition: all 0.3s ease;
       }
 
       .container {
         max-width: 1200px;
         margin: 0 auto;
-        background: white;
+        background: var(--card-bg);
         border-radius: 15px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow);
         overflow: hidden;
+        transition: all 0.3s ease;
       }
 
       .header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--primary-gradient);
         color: white;
         padding: 30px;
         text-align: center;
+        position: relative;
       }
 
       .header h1 {
@@ -48,8 +69,81 @@
         font-size: 1.1rem;
       }
 
+      /* Profile Section Styles */
+      .profile-section {
+        position: absolute;
+        top: 20px;
+        right: 30px;
+      }
+
+      .profile-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 15px;
+        border-radius: 25px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .profile-info:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      .profile-avatar {
+        font-size: 1.2rem;
+      }
+
+      .profile-name {
+        font-weight: 600;
+      }
+
+      .profile-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: var(--card-bg);
+        border-radius: 10px;
+        box-shadow: var(--shadow);
+        padding: 20px;
+        min-width: 250px;
+        z-index: 1000;
+        margin-top: 10px;
+      }
+
+      .profile-stats {
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid var(--border-color);
+      }
+
+      .stat-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 8px;
+      }
+
+      .stat-label {
+        font-weight: 600;
+        color: var(--text-color);
+      }
+
+      .stat-value {
+        color: #667eea;
+        font-weight: 600;
+      }
+
+      .profile-menu button {
+        width: 100%;
+        margin-bottom: 8px;
+        text-align: left;
+      }
+
       .main-content {
         padding: 30px;
+        background: var(--bg-color);
+        transition: all 0.3s ease;
       }
 
       .controls {
@@ -69,10 +163,12 @@
       .search-box input {
         width: 100%;
         padding: 12px 45px 12px 15px;
-        border: 2px solid #e1e5e9;
+        border: 2px solid var(--border-color);
         border-radius: 8px;
         font-size: 16px;
         transition: border-color 0.3s;
+        background: var(--card-bg);
+        color: var(--text-color);
       }
 
       .search-box input:focus {
@@ -97,11 +193,13 @@
       select,
       button {
         padding: 12px 20px;
-        border: 2px solid #e1e5e9;
+        border: 2px solid var(--border-color);
         border-radius: 8px;
         font-size: 16px;
         cursor: pointer;
         transition: all 0.3s;
+        background: var(--card-bg);
+        color: var(--text-color);
       }
 
       select:focus {
@@ -110,7 +208,7 @@
       }
 
       .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: var(--primary-gradient);
         color: white;
         border: none;
         font-weight: 600;
@@ -122,13 +220,13 @@
       }
 
       .btn-secondary {
-        background: #f8f9fa;
-        color: #495057;
-        border: 2px solid #e1e5e9;
+        background: var(--card-bg);
+        color: var(--text-color);
+        border: 2px solid var(--border-color);
       }
 
       .btn-secondary:hover {
-        background: #e9ecef;
+        background: var(--border-color);
       }
 
       .btn-danger {
@@ -141,6 +239,89 @@
         background: #c82333;
       }
 
+      /* AI Recommendations Section */
+      .recommendations-section {
+        background: var(--card-bg);
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: var(--shadow);
+      }
+
+      .recommendations-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+      }
+
+      .recommendations-header h3 {
+        color: var(--text-color);
+        margin: 0;
+      }
+
+      .ai-badge {
+        background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+
+      .recommendations-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+      }
+
+      .recommendation-card {
+        background: var(--bg-color);
+        border-radius: 8px;
+        padding: 15px;
+        border-left: 4px solid #667eea;
+        transition: all 0.3s ease;
+      }
+
+      .recommendation-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+      }
+
+      .rec-title {
+        font-weight: 600;
+        margin-bottom: 5px;
+        color: var(--text-color);
+      }
+
+      .rec-reason {
+        font-size: 0.8rem;
+        color: #666;
+        margin-bottom: 8px;
+      }
+
+      .rec-confidence {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 0.8rem;
+      }
+
+      .confidence-bar {
+        flex: 1;
+        height: 4px;
+        background: var(--border-color);
+        border-radius: 2px;
+        overflow: hidden;
+      }
+
+      .confidence-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
+        transition: width 0.3s ease;
+      }
+
       .media-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -149,11 +330,11 @@
       }
 
       .media-card {
-        background: white;
-        border: 1px solid #e1e5e9;
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
         border-radius: 12px;
         padding: 20px;
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        box-shadow: var(--shadow);
         transition: transform 0.3s, box-shadow 0.3s;
       }
 
@@ -172,7 +353,7 @@
       .media-title {
         font-size: 1.3rem;
         font-weight: 600;
-        color: #333;
+        color: var(--text-color);
         margin-bottom: 5px;
       }
 
@@ -205,7 +386,7 @@
 
       .info-label {
         font-weight: 600;
-        color: #555;
+        color: var(--text-color);
       }
 
       .status-badge {
@@ -266,7 +447,7 @@
       }
 
       .modal-content {
-        background-color: white;
+        background-color: var(--card-bg);
         margin: 5% auto;
         padding: 30px;
         border-radius: 15px;
@@ -291,7 +472,7 @@
       }
 
       .close:hover {
-        color: #000;
+        color: var(--text-color);
       }
 
       .form-group {
@@ -302,7 +483,7 @@
         display: block;
         margin-bottom: 5px;
         font-weight: 600;
-        color: #333;
+        color: var(--text-color);
       }
 
       .form-group input,
@@ -310,10 +491,12 @@
       .form-group textarea {
         width: 100%;
         padding: 12px;
-        border: 2px solid #e1e5e9;
+        border: 2px solid var(--border-color);
         border-radius: 8px;
         font-size: 16px;
         transition: border-color 0.3s;
+        background: var(--card-bg);
+        color: var(--text-color);
       }
 
       .form-group input:focus,
@@ -348,6 +531,15 @@
         .media-grid {
           grid-template-columns: 1fr;
         }
+
+        .profile-section {
+          position: static;
+          margin-bottom: 20px;
+        }
+
+        .recommendations-grid {
+          grid-template-columns: 1fr;
+        }
       }
     </style>
   </head>
@@ -359,6 +551,21 @@
       </div>
 
       <div class="main-content">
+        <!-- AI Recommendations Section -->
+        <div
+          class="recommendations-section"
+          id="recommendationsSection"
+          style="display: none"
+        >
+          <div class="recommendations-header">
+            <h3><i class="fas fa-robot"></i> AI Recommendations</h3>
+            <span class="ai-badge">AI Powered</span>
+          </div>
+          <div class="recommendations-grid" id="recommendationsGrid">
+            <!-- Recommendations will be populated here -->
+          </div>
+        </div>
+
         <div class="controls">
           <div class="search-box">
             <input
@@ -387,6 +594,10 @@
 
             <button class="btn-primary" onclick="openAddModal()">
               <i class="fas fa-plus"></i> Add Media
+            </button>
+
+            <button class="btn-secondary" onclick="generateRecommendations()">
+              <i class="fas fa-magic"></i> Get AI Suggestions
             </button>
           </div>
         </div>
@@ -478,6 +689,7 @@
       </div>
     </div>
 
+    <script src="profiles.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -371,32 +371,229 @@ class AuthenticationManager {
   }
 
   updateAuthUI() {
+    // Create profile section if it doesn't exist
+    let profileSection = document.querySelector(".profile-section");
+    if (!profileSection && this.currentUser) {
+      const header = document.querySelector(".header");
+      if (header) {
+        profileSection = document.createElement("div");
+        profileSection.className = "profile-section";
+        profileSection.innerHTML = `
+          <div class="profile-info" onclick="toggleProfileMenu()">
+            <span class="profile-avatar">${this.currentUser.avatar}</span>
+            <span class="profile-name">${this.escapeHtml(
+              this.currentUser.name
+            )}</span>
+            <i class="fas fa-chevron-down"></i>
+          </div>
+          <div class="profile-menu" id="profileMenu" style="display: none;">
+            <div class="profile-stats">
+              <div class="stat-item">
+                <span class="stat-label">Total Items:</span>
+                <span class="stat-value" id="totalItems">${
+                  this.currentUser.stats.totalItems
+                }</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Completed:</span>
+                <span class="stat-value" id="completedItems">${
+                  this.currentUser.stats.completedItems
+                }</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">Favorite Genre:</span>
+                <span class="stat-value" id="favoriteGenre">${
+                  this.currentUser.stats.favoriteGenre || "None"
+                }</span>
+              </div>
+            </div>
+            <button class="btn-secondary" onclick="authManager.showCreateUserModal()">
+              <i class="fas fa-user-plus"></i> New Profile
+            </button>
+            <button class="btn-secondary" onclick="authManager.exportCollection()">
+              <i class="fas fa-download"></i> Export Collection
+            </button>
+            <button class="btn-secondary" onclick="document.getElementById('importFile').click()">
+              <i class="fas fa-upload"></i> Import Collection
+            </button>
+            <button class="btn-secondary" onclick="authManager.toggleDarkMode()">
+              <i class="fas fa-moon"></i> Dark Mode
+            </button>
+            <button class="btn-danger logout-btn" onclick="authManager.logout()">
+              <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+          </div>
+        `;
+        header.appendChild(profileSection);
+
+        // Create hidden file input for import
+        const fileInput = document.createElement("input");
+        fileInput.type = "file";
+        fileInput.id = "importFile";
+        fileInput.accept = ".json";
+        fileInput.style.display = "none";
+        fileInput.addEventListener("change", (e) => this.importCollection(e));
+        document.body.appendChild(fileInput);
+      }
+    }
+
     // Update profile section if it exists
-    const profileSection = document.querySelector(".profile-section");
     if (profileSection && this.currentUser) {
       const profileInfo = profileSection.querySelector(".profile-info");
       if (profileInfo) {
         profileInfo.innerHTML = `
-                    <span class="profile-avatar">${
-                      this.currentUser.avatar
-                    }</span>
-                    <span class="profile-name">${this.escapeHtml(
-                      this.currentUser.name
-                    )}</span>
-                    <i class="fas fa-chevron-down"></i>
-                `;
+          <span class="profile-avatar">${this.currentUser.avatar}</span>
+          <span class="profile-name">${this.escapeHtml(
+            this.currentUser.name
+          )}</span>
+          <i class="fas fa-chevron-down"></i>
+        `;
       }
 
-      // Add logout button to profile menu
-      const profileMenu = profileSection.querySelector(".profile-menu");
-      if (profileMenu && !profileMenu.querySelector(".logout-btn")) {
-        const logoutBtn = document.createElement("button");
-        logoutBtn.className = "btn-danger logout-btn";
-        logoutBtn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Logout';
-        logoutBtn.onclick = () => this.logout();
-        profileMenu.appendChild(logoutBtn);
-      }
+      // Update stats
+      const totalItemsEl = document.getElementById("totalItems");
+      const completedItemsEl = document.getElementById("completedItems");
+      const favoriteGenreEl = document.getElementById("favoriteGenre");
+
+      if (totalItemsEl)
+        totalItemsEl.textContent = this.currentUser.stats.totalItems;
+      if (completedItemsEl)
+        completedItemsEl.textContent = this.currentUser.stats.completedItems;
+      if (favoriteGenreEl)
+        favoriteGenreEl.textContent =
+          this.currentUser.stats.favoriteGenre || "None";
     }
+
+    // Hide profile section if no user is logged in
+    if (!this.currentUser && profileSection) {
+      profileSection.style.display = "none";
+    } else if (this.currentUser && profileSection) {
+      profileSection.style.display = "block";
+    }
+  }
+
+  exportCollection() {
+    if (!this.currentUser) {
+      this.showNotification("Please log in to export your collection", "error");
+      return;
+    }
+
+    const profileKey = `profile_${this.currentUser.id}`;
+    const allProfileData = JSON.parse(
+      localStorage.getItem("profileMediaData") || "{}"
+    );
+    const mediaItems = allProfileData[profileKey] || [];
+
+    const data = {
+      profile: this.currentUser,
+      mediaItems: mediaItems,
+      exportDate: new Date().toISOString(),
+      version: "2.0.0",
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `media-collection-${this.currentUser.name}-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    this.showNotification("Collection exported successfully!", "success");
+  }
+
+  importCollection(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!this.currentUser) {
+      this.showNotification("Please log in to import a collection", "error");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target.result);
+
+        if (!data.mediaItems || !Array.isArray(data.mediaItems)) {
+          throw new Error("Invalid file format");
+        }
+
+        const profileKey = `profile_${this.currentUser.id}`;
+        const allProfileData = JSON.parse(
+          localStorage.getItem("profileMediaData") || "{}"
+        );
+
+        // Merge or replace media items
+        const shouldReplace = confirm(
+          `Import ${data.mediaItems.length} items?\n\nClick OK to REPLACE your current collection\nClick Cancel to MERGE with your current collection`
+        );
+
+        if (shouldReplace) {
+          allProfileData[profileKey] = data.mediaItems;
+        } else {
+          const currentItems = allProfileData[profileKey] || [];
+          const mergedItems = [...currentItems];
+
+          data.mediaItems.forEach((importItem) => {
+            // Check if item already exists (by title and creator)
+            const exists = mergedItems.some(
+              (item) =>
+                item.title.toLowerCase() === importItem.title.toLowerCase() &&
+                item.creator.toLowerCase() === importItem.creator.toLowerCase()
+            );
+
+            if (!exists) {
+              // Assign new ID to avoid conflicts
+              importItem.id = Date.now() + Math.random();
+              mergedItems.push(importItem);
+            }
+          });
+
+          allProfileData[profileKey] = mergedItems;
+        }
+
+        localStorage.setItem(
+          "profileMediaData",
+          JSON.stringify(allProfileData)
+        );
+
+        // Reload the media
+        if (window.loadMedia) {
+          loadMedia();
+        }
+
+        this.showNotification(
+          `Successfully imported ${data.mediaItems.length} items!`,
+          "success"
+        );
+      } catch (error) {
+        console.error("Import error:", error);
+        this.showNotification(
+          "Failed to import collection. Please check the file format.",
+          "error"
+        );
+      }
+    };
+
+    reader.readAsText(file);
+    // Reset file input
+    event.target.value = "";
+  }
+
+  toggleDarkMode() {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    localStorage.setItem("darkMode", isDark);
+    this.showNotification(
+      `${isDark ? "Dark" : "Light"} mode activated!`,
+      "success"
+    );
   }
 
   getCurrentUser() {
@@ -426,3 +623,11 @@ class AuthenticationManager {
 
 // Global auth manager instance
 const authManager = new AuthenticationManager();
+
+// Global function for profile menu toggle
+function toggleProfileMenu() {
+  const menu = document.getElementById("profileMenu");
+  if (menu) {
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+  }
+}

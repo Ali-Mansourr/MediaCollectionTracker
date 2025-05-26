@@ -41,6 +41,7 @@ function setupEventListeners() {
 
     if (
       profileMenu &&
+      profileMenu.style.display === "block" &&
       !profileMenu.contains(event.target) &&
       profileInfo &&
       !profileInfo.contains(event.target)

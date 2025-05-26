@@ -4,7 +4,9 @@ A modern web application for organizing and tracking your personal media collect
 
 ## 🌐 Live Demo
 
-**[Try the live application here!](https://your-app-name.onrender.com)** _(URL will be updated after deployment)_
+**[🚀 Try the Live Application Here!](https://mediacollectiontracker.onrender.com)**
+
+_Experience all features including AI recommendations, user profiles, and dark mode!_
 
 ## 🚀 Quick Deploy
 
@@ -12,7 +14,7 @@ Deploy your own instance with one click:
 
 [![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/Ali-Mansourr/MediaCollectionTracker)
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/template/your-template-id)
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/Ali-Mansourr/MediaCollectionTracker)
 
 [![Deploy to Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy?template=https://github.com/Ali-Mansourr/MediaCollectionTracker)
 
@@ -39,12 +41,16 @@ Deploy your own instance with one click:
 
 ### 🌟 **BONUS Features**
 
-- **👥 User Profiles**: Multi-user support with personal collections and avatars
+- **🔐 Professional Authentication**: Beautiful login/signup system with avatar selection
+- **👥 User Profiles**: Multi-user support with personal collections and statistics
 - **🤖 AI Recommendations**: Smart suggestions based on your collection patterns
-- **🌙 Dark Mode**: Toggle between light and dark themes
+- **🌙 Dark Mode**: Toggle between light and dark themes with smooth transitions
 - **📊 Statistics Dashboard**: Real-time stats (total items, completed, favorite genre)
-- **📤 Export/Import**: Download your collection as JSON
+- **📤 Export/Import**: Download your collection as JSON with profile data
+- **👤 Guest Mode**: Try the app without creating an account
 - **🎨 Enhanced UX**: Modern animations, hover effects, and responsive design
+- **🔄 Profile Switching**: Seamlessly switch between multiple user profiles
+- **🗑️ User Management**: Create, delete, and manage user profiles
 
 ## Technology Stack
 
@@ -53,7 +59,8 @@ Deploy your own instance with one click:
 - **Storage**: JSON file (media-collection.json) + LocalStorage for profiles
 - **Styling**: Custom CSS with modern design patterns and CSS variables
 - **Icons**: Font Awesome 6
-- **AI**: Custom recommendation algorithm
+- **AI**: Custom recommendation algorithm with confidence scoring
+- **Authentication**: Client-side user management with secure data isolation
 - **Deployment**: Render/Railway/Heroku compatible
 
 ## Quick Start
@@ -102,6 +109,13 @@ For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Usage Guide
 
+### Getting Started
+
+1. **First Visit**: You'll see a welcome screen with authentication options
+2. **Create Profile**: Click "Create New Profile" and choose your avatar
+3. **Or Continue as Guest**: Try the app without creating an account
+4. **Start Adding Media**: Use the "Add Media" button to build your collection
+
 ### Adding Media Items
 
 1. Click the "Add Media" button
@@ -118,11 +132,13 @@ For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ### Using Advanced Features
 
-- **Profiles**: Click your profile avatar to create new profiles or switch between users
+- **Authentication**: Professional login system with beautiful modals
+- **Profiles**: Click your profile avatar to access profile menu and statistics
 - **AI Recommendations**: Click "Get AI Suggestions" to receive personalized recommendations
 - **Dark Mode**: Toggle dark mode from the profile menu
 - **Export**: Download your collection data from the profile menu
 - **Statistics**: View your collection stats in the profile dropdown
+- **Logout**: Secure logout with confirmation dialog
 
 ### Status Types
 
@@ -156,6 +172,7 @@ MediaCollectionTracker/
 ├── public/
 │   ├── index.html         # Main HTML file with enhanced UI
 │   ├── app.js            # Frontend JavaScript logic
+│   ├── auth.js           # Authentication system
 │   └── profiles.js       # Profile management and AI engine
 └── README.md             # This file
 ```
@@ -181,7 +198,7 @@ The application uses a hybrid storage approach:
 The application is built with modularity in mind:
 
 - **CSS Variables**: Easy theming with CSS custom properties
-- **Modular JavaScript**: Separate classes for profiles and AI
+- **Modular JavaScript**: Separate classes for authentication, profiles, and AI
 - **API separation**: Clear backend/frontend separation
 - **Component-based UI**: Reusable UI components
 

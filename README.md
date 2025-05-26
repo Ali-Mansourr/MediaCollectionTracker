@@ -2,6 +2,10 @@
 
 A modern web application for organizing and tracking your personal media collection including movies, music, and games. Built with Node.js, Express, and vanilla JavaScript.
 
+## 🌐 Live Demo
+
+**[Try the live application here!](https://your-app-name.onrender.com)** _(URL will be updated after deployment)_
+
 ## Features
 
 ### ✅ Core Requirements Met
@@ -21,6 +25,7 @@ A modern web application for organizing and tracking your personal media collect
 - **Notes Support**: Add personal notes for each media item
 - **Mobile Responsive**: Works perfectly on desktop, tablet, and mobile devices
 - **Data Persistence**: JSON file storage for simplicity and portability
+- **🚀 Live Deployment**: Deployed and accessible online for testing
 
 ## Technology Stack
 
@@ -29,6 +34,7 @@ A modern web application for organizing and tracking your personal media collect
 - **Storage**: JSON file (media-collection.json)
 - **Styling**: Custom CSS with modern design patterns
 - **Icons**: Font Awesome 6
+- **Deployment**: Render/Railway/Heroku compatible
 
 ## Quick Start
 
@@ -62,6 +68,17 @@ A modern web application for organizing and tracking your personal media collect
    Navigate to `http://localhost:3000`
 
 That's it! The application will create a `media-collection.json` file automatically to store your data.
+
+## 🚀 Deployment
+
+This application is ready for deployment on multiple platforms:
+
+- **Render** (Recommended): See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions
+- **Railway**: One-click deployment from GitHub
+- **Heroku**: Traditional PaaS deployment
+- **Vercel**: Serverless deployment
+
+For detailed deployment instructions, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Usage Guide
 
@@ -103,6 +120,10 @@ The application provides a RESTful API:
 MediaCollectionTracker/
 ├── server.js              # Express server and API routes
 ├── package.json           # Dependencies and scripts
+├── package-lock.json      # Locked dependency versions
+├── render.yaml            # Render deployment config
+├── Procfile              # Heroku deployment config
+├── DEPLOYMENT.md         # Deployment instructions
 ├── media-collection.json  # Data storage (created automatically)
 ├── public/
 │   ├── index.html         # Main HTML file

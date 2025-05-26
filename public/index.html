@@ -88,9 +88,35 @@
         </div>
 
         <form id="mediaForm">
-          <div class="form-group">
+          <div class="form-group smart-enabled">
             <label for="title">Title *</label>
-            <input type="text" id="title" required />
+            <button
+              type="button"
+              class="smart-toggle"
+              id="smartToggle"
+              title="Enable Smart Search"
+            >
+              <i class="fas fa-magic"></i> AI
+            </button>
+            <div class="smart-input-container">
+              <div class="smart-input">
+                <input type="text" id="title" required />
+                <div class="smart-input-loading" id="titleLoading"></div>
+                <div class="smart-input-icon" id="titleIcon">
+                  <i class="fas fa-search"></i>
+                </div>
+              </div>
+              <div class="autocomplete-dropdown" id="titleDropdown"></div>
+            </div>
+            <div class="metadata-preview" id="metadataPreview">
+              <div class="metadata-preview-header">
+                <div class="metadata-preview-icon">
+                  <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="metadata-preview-title">Metadata Found</div>
+              </div>
+              <div class="metadata-preview-content" id="metadataContent"></div>
+            </div>
           </div>
 
           <div class="form-group">
@@ -158,6 +184,7 @@
 
     <script src="auth.js"></script>
     <script src="profiles.js"></script>
+    <script src="metadata-api.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

@@ -1,6 +1,8 @@
 // Global variables
 let mediaItems = [];
 let editingId = null;
+let smartSearchEnabled = false;
+let selectedMetadata = null;
 
 // DOM elements
 const searchInput = document.getElementById("searchInput");
@@ -11,14 +13,321 @@ const mediaModal = document.getElementById("mediaModal");
 const mediaForm = document.getElementById("mediaForm");
 const modalTitle = document.getElementById("modalTitle");
 
+// Smart search elements
+const titleInput = document.getElementById("title");
+const smartToggle = document.getElementById("smartToggle");
+const titleDropdown = document.getElementById("titleDropdown");
+const titleLoading = document.getElementById("titleLoading");
+const titleIcon = document.getElementById("titleIcon");
+const metadataPreview = document.getElementById("metadataPreview");
+const typeSelect = document.getElementById("type");
+
 // Initialize the app
 document.addEventListener("DOMContentLoaded", function () {
   // Wait for auth manager to initialize
   setTimeout(() => {
     loadMedia();
     setupEventListeners();
+    initializeSmartSearch();
   }, 100);
 });
+
+// Initialize smart search functionality
+function initializeSmartSearch() {
+  // Smart toggle button
+  smartToggle.addEventListener("click", toggleSmartSearch);
+
+  // Title input with smart search
+  titleInput.addEventListener("input", handleTitleInput);
+  titleInput.addEventListener("focus", handleTitleFocus);
+  titleInput.addEventListener("blur", handleTitleBlur);
+  titleInput.addEventListener("keydown", handleTitleKeydown);
+
+  // Type selection affects smart search
+  typeSelect.addEventListener("change", handleTypeChange);
+
+  // Close dropdown when clicking outside
+  document.addEventListener("click", (e) => {
+    if (!titleDropdown.contains(e.target) && !titleInput.contains(e.target)) {
+      hideDropdown();
+    }
+  });
+}
+
+// Toggle smart search on/off
+function toggleSmartSearch() {
+  smartSearchEnabled = !smartSearchEnabled;
+
+  if (smartSearchEnabled) {
+    smartToggle.classList.add("active");
+    smartToggle.innerHTML = '<i class="fas fa-magic"></i> AI ON';
+    titleIcon.innerHTML = '<i class="fas fa-robot"></i>';
+    showNotification(
+      "Smart search enabled! Start typing to get AI suggestions.",
+      "info"
+    );
+  } else {
+    smartToggle.classList.remove("active");
+    smartToggle.innerHTML = '<i class="fas fa-magic"></i> AI';
+    titleIcon.innerHTML = '<i class="fas fa-search"></i>';
+    hideDropdown();
+    hideMetadataPreview();
+    selectedMetadata = null;
+    showNotification("Smart search disabled", "info");
+  }
+}
+
+// Handle title input changes
+function handleTitleInput(e) {
+  const query = e.target.value.trim();
+
+  if (!smartSearchEnabled || !query || query.length < 2) {
+    hideDropdown();
+    return;
+  }
+
+  const mediaType = typeSelect.value;
+  if (!mediaType) {
+    showDropdownMessage("Please select a media type first", "info");
+    return;
+  }
+
+  // Show loading
+  showLoading();
+
+  // Debounced search
+  metadataAPI.searchWithDebounce(query, mediaType, (results) => {
+    hideLoading();
+    displaySearchResults(results);
+  });
+}
+
+// Handle title input focus
+function handleTitleFocus() {
+  if (smartSearchEnabled && titleDropdown.children.length > 0) {
+    showDropdown();
+  }
+}
+
+// Handle title input blur (with delay to allow clicking dropdown items)
+function handleTitleBlur() {
+  setTimeout(() => {
+    if (!titleDropdown.matches(":hover")) {
+      hideDropdown();
+    }
+  }, 150);
+}
+
+// Handle keyboard navigation in dropdown
+function handleTitleKeydown(e) {
+  if (!smartSearchEnabled || !titleDropdown.classList.contains("active")) {
+    return;
+  }
+
+  const items = titleDropdown.querySelectorAll(".autocomplete-item");
+  const highlighted = titleDropdown.querySelector(
+    ".autocomplete-item.highlighted"
+  );
+
+  switch (e.key) {
+    case "ArrowDown":
+      e.preventDefault();
+      if (highlighted) {
+        highlighted.classList.remove("highlighted");
+        const next = highlighted.nextElementSibling;
+        if (next && next.classList.contains("autocomplete-item")) {
+          next.classList.add("highlighted");
+        } else {
+          items[0]?.classList.add("highlighted");
+        }
+      } else {
+        items[0]?.classList.add("highlighted");
+      }
+      break;
+
+    case "ArrowUp":
+      e.preventDefault();
+      if (highlighted) {
+        highlighted.classList.remove("highlighted");
+        const prev = highlighted.previousElementSibling;
+        if (prev && prev.classList.contains("autocomplete-item")) {
+          prev.classList.add("highlighted");
+        } else {
+          items[items.length - 1]?.classList.add("highlighted");
+        }
+      } else {
+        items[items.length - 1]?.classList.add("highlighted");
+      }
+      break;
+
+    case "Enter":
+      e.preventDefault();
+      if (highlighted) {
+        const metadata = JSON.parse(highlighted.dataset.metadata);
+        selectMetadata(metadata);
+      }
+      break;
+
+    case "Escape":
+      hideDropdown();
+      titleInput.blur();
+      break;
+  }
+}
+
+// Handle media type change
+function handleTypeChange() {
+  if (smartSearchEnabled && titleInput.value.trim()) {
+    // Re-trigger search with new type
+    handleTitleInput({ target: titleInput });
+  }
+}
+
+// Display search results in dropdown
+function displaySearchResults(results) {
+  if (!results || results.length === 0) {
+    showDropdownMessage("No results found", "no-results");
+    return;
+  }
+
+  const html = results
+    .map(
+      (item) => `
+    <div class="autocomplete-item" data-metadata='${JSON.stringify(
+      item
+    )}' onclick="selectMetadata(${JSON.stringify(item).replace(
+        /'/g,
+        "&apos;"
+      )})">
+      ${
+        item.poster
+          ? `<img src="${item.poster}" alt="${item.title}" class="autocomplete-item-poster" onerror="this.style.display='none'">`
+          : '<div class="autocomplete-item-poster"></div>'
+      }
+      <div class="autocomplete-item-info">
+        <div class="autocomplete-item-title">${escapeHtml(item.title)}</div>
+        <div class="autocomplete-item-details">
+          <span class="autocomplete-item-creator">${escapeHtml(
+            item.creator
+          )}</span>
+          ${
+            item.releaseDate
+              ? `<span class="autocomplete-item-year">(${
+                  item.releaseDate.split("-")[0]
+                })</span>`
+              : ""
+          }
+          <span class="autocomplete-item-source">${item.source}</span>
+        </div>
+      </div>
+    </div>
+  `
+    )
+    .join("");
+
+  titleDropdown.innerHTML = html;
+  showDropdown();
+}
+
+// Select metadata from dropdown
+function selectMetadata(metadata) {
+  selectedMetadata = metadata;
+
+  // Fill form fields
+  titleInput.value = metadata.title;
+  document.getElementById("creator").value = metadata.creator;
+  document.getElementById("type").value = metadata.type;
+  document.getElementById("genre").value = metadata.genre || "";
+
+  if (metadata.releaseDate) {
+    document.getElementById("releaseDate").value = metadata.releaseDate;
+  }
+
+  if (metadata.rating) {
+    document.getElementById("rating").value = metadata.rating;
+  }
+
+  // Show metadata preview
+  showMetadataPreview(metadata);
+  hideDropdown();
+
+  showNotification(
+    "Metadata applied! You can still edit any field.",
+    "success"
+  );
+}
+
+// Show metadata preview
+function showMetadataPreview(metadata) {
+  const content = document.getElementById("metadataContent");
+
+  const fields = [
+    { label: "Title", value: metadata.title },
+    { label: "Creator", value: metadata.creator },
+    { label: "Genre", value: metadata.genre },
+    {
+      label: "Release",
+      value: metadata.releaseDate
+        ? metadata.releaseDate.split("-")[0]
+        : "Unknown",
+    },
+    { label: "Source", value: metadata.source },
+  ];
+
+  const fieldsHtml = fields
+    .map(
+      (field) => `
+    <div class="metadata-preview-field">
+      <span class="metadata-preview-label">${field.label}:</span>
+      <span class="metadata-preview-value">${escapeHtml(
+        field.value || "Unknown"
+      )}</span>
+    </div>
+  `
+    )
+    .join("");
+
+  content.innerHTML = `
+    <div class="metadata-preview-fields">
+      ${fieldsHtml}
+    </div>
+  `;
+
+  metadataPreview.classList.add("active");
+}
+
+// Hide metadata preview
+function hideMetadataPreview() {
+  metadataPreview.classList.remove("active");
+}
+
+// Show dropdown message
+function showDropdownMessage(message, type) {
+  const className =
+    type === "no-results" ? "autocomplete-no-results" : "autocomplete-error";
+  titleDropdown.innerHTML = `<div class="${className}">${message}</div>`;
+  showDropdown();
+}
+
+// Show/hide dropdown
+function showDropdown() {
+  titleDropdown.classList.add("active");
+}
+
+function hideDropdown() {
+  titleDropdown.classList.remove("active");
+}
+
+// Show/hide loading indicator
+function showLoading() {
+  titleLoading.classList.add("active");
+  titleIcon.style.display = "none";
+}
+
+function hideLoading() {
+  titleLoading.classList.remove("active");
+  titleIcon.style.display = "block";
+}
 
 // Setup event listeners
 function setupEventListeners() {
@@ -421,7 +730,21 @@ function displayRecommendations(recommendations) {
 function closeModal() {
   mediaModal.style.display = "none";
   editingId = null;
+  selectedMetadata = null;
   mediaForm.reset();
+
+  // Reset smart search state
+  hideDropdown();
+  hideMetadataPreview();
+  hideLoading();
+
+  // Reset smart search toggle if it was enabled
+  if (smartSearchEnabled) {
+    smartSearchEnabled = false;
+    smartToggle.classList.remove("active");
+    smartToggle.innerHTML = '<i class="fas fa-magic"></i> AI';
+    titleIcon.innerHTML = '<i class="fas fa-search"></i>';
+  }
 }
 
 // Utility functions
@@ -531,3 +854,4 @@ window.showInfo = showInfo;
 window.showNotification = showNotification;
 window.loadMedia = loadMedia;
 window.mediaItems = mediaItems;
+window.selectMetadata = selectMetadata;

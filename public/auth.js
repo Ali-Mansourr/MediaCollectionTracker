@@ -271,8 +271,10 @@ class AuthenticationManager {
     if (window.profileManager) {
       profileManager.currentProfile = userId;
       profileManager.profiles = this.users;
-      profileManager.updateProfileUI();
     }
+
+    // Update UI first, then load media
+    this.updateAuthUI();
 
     // Reload media for this user
     if (window.loadMedia) {
@@ -280,7 +282,6 @@ class AuthenticationManager {
     }
 
     this.showNotification(`Welcome back, ${user.name}!`, "success");
-    this.updateAuthUI();
   }
 
   continueAsGuest() {
@@ -303,16 +304,24 @@ class AuthenticationManager {
     // Hide auth modals
     document.getElementById("loginModal").style.display = "none";
 
-    this.showNotification(
-      "Continuing as guest - data will be temporary",
-      "info"
-    );
+    // Update profile manager
+    if (window.profileManager) {
+      profileManager.currentProfile = guestId;
+      profileManager.profiles[guestId] = guestUser;
+    }
+
+    // Update UI first, then load media
     this.updateAuthUI();
 
     // Load guest data
     if (window.loadMedia) {
       loadMedia();
     }
+
+    this.showNotification(
+      "Continuing as guest - data will be temporary",
+      "info"
+    );
   }
 
   logout() {
@@ -371,13 +380,35 @@ class AuthenticationManager {
   }
 
   updateAuthUI() {
-    // Create profile section if it doesn't exist
+    // Always ensure profile section exists when user is logged in
     let profileSection = document.querySelector(".profile-section");
-    if (!profileSection && this.currentUser) {
-      const header = document.querySelector(".header");
-      if (header) {
-        profileSection = document.createElement("div");
-        profileSection.className = "profile-section";
+
+    if (this.currentUser) {
+      // Create profile section if it doesn't exist
+      if (!profileSection) {
+        const header = document.querySelector(".header");
+        if (header) {
+          profileSection = document.createElement("div");
+          profileSection.className = "profile-section";
+          header.appendChild(profileSection);
+
+          // Create hidden file input for import if it doesn't exist
+          if (!document.getElementById("importFile")) {
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.id = "importFile";
+            fileInput.accept = ".json";
+            fileInput.style.display = "none";
+            fileInput.addEventListener("change", (e) =>
+              this.importCollection(e)
+            );
+            document.body.appendChild(fileInput);
+          }
+        }
+      }
+
+      // Always update the profile section content
+      if (profileSection) {
         profileSection.innerHTML = `
           <div class="profile-info" onclick="toggleProfileMenu()">
             <span class="profile-avatar">${this.currentUser.avatar}</span>
@@ -424,51 +455,15 @@ class AuthenticationManager {
             </button>
           </div>
         `;
-        header.appendChild(profileSection);
 
-        // Create hidden file input for import
-        const fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.id = "importFile";
-        fileInput.accept = ".json";
-        fileInput.style.display = "none";
-        fileInput.addEventListener("change", (e) => this.importCollection(e));
-        document.body.appendChild(fileInput);
+        // Make sure profile section is visible
+        profileSection.style.display = "block";
       }
-    }
-
-    // Update profile section if it exists
-    if (profileSection && this.currentUser) {
-      const profileInfo = profileSection.querySelector(".profile-info");
-      if (profileInfo) {
-        profileInfo.innerHTML = `
-          <span class="profile-avatar">${this.currentUser.avatar}</span>
-          <span class="profile-name">${this.escapeHtml(
-            this.currentUser.name
-          )}</span>
-          <i class="fas fa-chevron-down"></i>
-        `;
+    } else {
+      // Hide profile section if no user is logged in
+      if (profileSection) {
+        profileSection.style.display = "none";
       }
-
-      // Update stats
-      const totalItemsEl = document.getElementById("totalItems");
-      const completedItemsEl = document.getElementById("completedItems");
-      const favoriteGenreEl = document.getElementById("favoriteGenre");
-
-      if (totalItemsEl)
-        totalItemsEl.textContent = this.currentUser.stats.totalItems;
-      if (completedItemsEl)
-        completedItemsEl.textContent = this.currentUser.stats.completedItems;
-      if (favoriteGenreEl)
-        favoriteGenreEl.textContent =
-          this.currentUser.stats.favoriteGenre || "None";
-    }
-
-    // Hide profile section if no user is logged in
-    if (!this.currentUser && profileSection) {
-      profileSection.style.display = "none";
-    } else if (this.currentUser && profileSection) {
-      profileSection.style.display = "block";
     }
   }
 

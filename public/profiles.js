@@ -1,18 +1,37 @@
-// User Profile Management System
+// User Profile Management System (Updated for Auth Integration)
 class ProfileManager {
   constructor() {
     this.currentProfile = null;
-    this.profiles = this.loadProfiles();
-    this.initializeProfileSystem();
+    this.profiles = {};
+    // Don't initialize profile system here - let auth manager handle it
   }
 
   loadProfiles() {
-    const saved = localStorage.getItem("mediaTrackerProfiles");
+    const saved = localStorage.getItem("mediaTrackerUsers");
     return saved ? JSON.parse(saved) : {};
   }
 
   saveProfiles() {
-    localStorage.setItem("mediaTrackerProfiles", JSON.stringify(this.profiles));
+    localStorage.setItem("mediaTrackerUsers", JSON.stringify(this.profiles));
+  }
+
+  getCurrentProfile() {
+    // Get current user from auth manager
+    if (window.authManager && authManager.getCurrentUser()) {
+      return authManager.getCurrentUser();
+    }
+
+    // Fallback to old system if auth manager not available
+    if (!this.currentProfile) {
+      const saved = localStorage.getItem("currentProfile");
+      if (saved && this.profiles[saved]) {
+        this.currentProfile = saved;
+      } else {
+        // Create default profile
+        this.currentProfile = this.createProfile("Default User", "👤");
+      }
+    }
+    return this.profiles[this.currentProfile];
   }
 
   createProfile(name, avatar = "👤") {
@@ -34,23 +53,12 @@ class ProfileManager {
       localStorage.setItem("currentProfile", profileId);
       this.updateProfileUI();
       // Reload media for this profile
-      loadMedia();
+      if (window.loadMedia) {
+        loadMedia();
+      }
       return true;
     }
     return false;
-  }
-
-  getCurrentProfile() {
-    if (!this.currentProfile) {
-      const saved = localStorage.getItem("currentProfile");
-      if (saved && this.profiles[saved]) {
-        this.currentProfile = saved;
-      } else {
-        // Create default profile
-        this.currentProfile = this.createProfile("Default User", "👤");
-      }
-    }
-    return this.profiles[this.currentProfile];
   }
 
   updateProfileStats(mediaItems) {
@@ -75,48 +83,62 @@ class ProfileManager {
       "None"
     );
 
-    this.saveProfiles();
+    // Save to auth manager if available
+    if (window.authManager) {
+      authManager.users[profile.id] = profile;
+      authManager.saveUsers();
+    } else {
+      this.saveProfiles();
+    }
+
     this.updateProfileUI();
   }
 
   initializeProfileSystem() {
-    // Add profile UI to header
+    // Only initialize if auth manager is not available
+    if (window.authManager) {
+      return; // Let auth manager handle this
+    }
+
+    // Add profile UI to header (fallback)
     const header = document.querySelector(".header");
-    const profileUI = document.createElement("div");
-    profileUI.className = "profile-section";
-    profileUI.innerHTML = `
-            <div class="profile-info" onclick="toggleProfileMenu()">
-                <span class="profile-avatar">👤</span>
-                <span class="profile-name">Loading...</span>
-                <i class="fas fa-chevron-down"></i>
+    if (!header.querySelector(".profile-section")) {
+      const profileUI = document.createElement("div");
+      profileUI.className = "profile-section";
+      profileUI.innerHTML = `
+        <div class="profile-info" onclick="toggleProfileMenu()">
+          <span class="profile-avatar">👤</span>
+          <span class="profile-name">Loading...</span>
+          <i class="fas fa-chevron-down"></i>
+        </div>
+        <div class="profile-menu" id="profileMenu" style="display: none;">
+          <div class="profile-stats">
+            <div class="stat-item">
+              <span class="stat-label">Total Items:</span>
+              <span class="stat-value" id="totalItems">0</span>
             </div>
-            <div class="profile-menu" id="profileMenu" style="display: none;">
-                <div class="profile-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Total Items:</span>
-                        <span class="stat-value" id="totalItems">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Completed:</span>
-                        <span class="stat-value" id="completedItems">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Favorite Genre:</span>
-                        <span class="stat-value" id="favoriteGenre">None</span>
-                    </div>
-                </div>
-                <button class="btn-secondary" onclick="openProfileModal()">
-                    <i class="fas fa-user-plus"></i> New Profile
-                </button>
-                <button class="btn-secondary" onclick="exportCollection()">
-                    <i class="fas fa-download"></i> Export
-                </button>
-                <button class="btn-secondary" onclick="toggleDarkMode()">
-                    <i class="fas fa-moon"></i> Dark Mode
-                </button>
+            <div class="stat-item">
+              <span class="stat-label">Completed:</span>
+              <span class="stat-value" id="completedItems">0</span>
             </div>
-        `;
-    header.appendChild(profileUI);
+            <div class="stat-item">
+              <span class="stat-label">Favorite Genre:</span>
+              <span class="stat-value" id="favoriteGenre">None</span>
+            </div>
+          </div>
+          <button class="btn-secondary" onclick="openProfileModal()">
+            <i class="fas fa-user-plus"></i> New Profile
+          </button>
+          <button class="btn-secondary" onclick="exportCollection()">
+            <i class="fas fa-download"></i> Export
+          </button>
+          <button class="btn-secondary" onclick="toggleDarkMode()">
+            <i class="fas fa-moon"></i> Dark Mode
+          </button>
+        </div>
+      `;
+      header.appendChild(profileUI);
+    }
 
     this.updateProfileUI();
   }
@@ -125,14 +147,19 @@ class ProfileManager {
     const profile = this.getCurrentProfile();
     if (!profile) return;
 
-    document.querySelector(".profile-avatar").textContent = profile.avatar;
-    document.querySelector(".profile-name").textContent = profile.name;
-    document.getElementById("totalItems").textContent =
-      profile.stats.totalItems;
-    document.getElementById("completedItems").textContent =
-      profile.stats.completedItems;
-    document.getElementById("favoriteGenre").textContent =
-      profile.stats.favoriteGenre || "None";
+    const avatarEl = document.querySelector(".profile-avatar");
+    const nameEl = document.querySelector(".profile-name");
+    const totalItemsEl = document.getElementById("totalItems");
+    const completedItemsEl = document.getElementById("completedItems");
+    const favoriteGenreEl = document.getElementById("favoriteGenre");
+
+    if (avatarEl) avatarEl.textContent = profile.avatar;
+    if (nameEl) nameEl.textContent = profile.name;
+    if (totalItemsEl) totalItemsEl.textContent = profile.stats.totalItems;
+    if (completedItemsEl)
+      completedItemsEl.textContent = profile.stats.completedItems;
+    if (favoriteGenreEl)
+      favoriteGenreEl.textContent = profile.stats.favoriteGenre || "None";
   }
 }
 
@@ -298,14 +325,22 @@ class AIRecommendationEngine {
 const profileManager = new ProfileManager();
 const aiEngine = new AIRecommendationEngine();
 
-// Global functions for UI interaction
+// Global functions for UI interaction (updated for auth integration)
 function toggleProfileMenu() {
   const menu = document.getElementById("profileMenu");
-  menu.style.display = menu.style.display === "none" ? "block" : "none";
+  if (menu) {
+    menu.style.display = menu.style.display === "none" ? "block" : "none";
+  }
 }
 
 function openProfileModal() {
-  // Simple prompt for now - could be enhanced with a proper modal
+  // Use auth manager if available
+  if (window.authManager) {
+    authManager.showCreateUserModal();
+    return;
+  }
+
+  // Fallback to simple prompt
   const name = prompt("Enter profile name:");
   const avatars = ["👤", "👨", "👩", "🧑", "👦", "👧", "🤖", "👽"];
   const avatar = avatars[Math.floor(Math.random() * avatars.length)];
@@ -313,15 +348,19 @@ function openProfileModal() {
   if (name) {
     const profileId = profileManager.createProfile(name, avatar);
     profileManager.switchProfile(profileId);
-    showSuccess(`Profile "${name}" created and activated!`);
+    if (window.showSuccess) {
+      showSuccess(`Profile "${name}" created and activated!`);
+    }
   }
 }
 
 function exportCollection() {
   const profile = profileManager.getCurrentProfile();
+  if (!profile) return;
+
   const data = {
     profile: profile,
-    mediaItems: mediaItems,
+    mediaItems: window.mediaItems || [],
     exportDate: new Date().toISOString(),
   };
 
@@ -337,14 +376,18 @@ function exportCollection() {
   a.click();
   URL.revokeObjectURL(url);
 
-  showSuccess("Collection exported successfully!");
+  if (window.showSuccess) {
+    showSuccess("Collection exported successfully!");
+  }
 }
 
 function toggleDarkMode() {
   document.body.classList.toggle("dark-mode");
   const isDark = document.body.classList.contains("dark-mode");
   localStorage.setItem("darkMode", isDark);
-  showSuccess(`${isDark ? "Dark" : "Light"} mode activated!`);
+  if (window.showSuccess) {
+    showSuccess(`${isDark ? "Dark" : "Light"} mode activated!`);
+  }
 }
 
 // Load dark mode preference

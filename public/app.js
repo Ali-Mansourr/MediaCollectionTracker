@@ -13,8 +13,11 @@ const modalTitle = document.getElementById("modalTitle");
 
 // Initialize the app
 document.addEventListener("DOMContentLoaded", function () {
-  loadMedia();
-  setupEventListeners();
+  // Wait for auth manager to initialize
+  setTimeout(() => {
+    loadMedia();
+    setupEventListeners();
+  }, 100);
 });
 
 // Setup event listeners
@@ -39,6 +42,7 @@ function setupEventListeners() {
     if (
       profileMenu &&
       !profileMenu.contains(event.target) &&
+      profileInfo &&
       !profileInfo.contains(event.target)
     ) {
       profileMenu.style.display = "none";
@@ -62,12 +66,17 @@ function debounce(func, wait) {
 // Load all media items
 async function loadMedia() {
   try {
-    const response = await fetch("/api/media");
-    mediaItems = await response.json();
+    // Get current user from auth manager
+    const currentUser = window.authManager
+      ? authManager.getCurrentUser()
+      : profileManager.getCurrentProfile();
+    if (!currentUser) {
+      mediaItems = [];
+      displayMedia(mediaItems);
+      return;
+    }
 
-    // Filter by current profile
-    const currentProfile = profileManager.getCurrentProfile();
-    const profileKey = `profile_${currentProfile.id}`;
+    const profileKey = `profile_${currentUser.id}`;
 
     // Store media items per profile in localStorage
     const allProfileData = JSON.parse(
@@ -82,7 +91,9 @@ async function loadMedia() {
     displayMedia(mediaItems);
 
     // Update profile stats
-    profileManager.updateProfileStats(mediaItems);
+    if (window.profileManager) {
+      profileManager.updateProfileStats(mediaItems);
+    }
   } catch (error) {
     console.error("Error loading media:", error);
     showError("Failed to load media items");
@@ -91,8 +102,12 @@ async function loadMedia() {
 
 // Save media items for current profile
 function saveMediaToProfile() {
-  const currentProfile = profileManager.getCurrentProfile();
-  const profileKey = `profile_${currentProfile.id}`;
+  const currentUser = window.authManager
+    ? authManager.getCurrentUser()
+    : profileManager.getCurrentProfile();
+  if (!currentUser) return;
+
+  const profileKey = `profile_${currentUser.id}`;
 
   const allProfileData = JSON.parse(
     localStorage.getItem("profileMediaData") || "{}"
@@ -244,6 +259,15 @@ function createMediaCard(item) {
 
 // Open add modal
 function openAddModal() {
+  // Check if user is logged in
+  const currentUser = window.authManager
+    ? authManager.getCurrentUser()
+    : profileManager.getCurrentProfile();
+  if (!currentUser) {
+    showError("Please log in to add media items");
+    return;
+  }
+
   editingId = null;
   modalTitle.textContent = "Add New Media";
   mediaForm.reset();
@@ -420,6 +444,10 @@ function showError(message) {
   showNotification(message, "error");
 }
 
+function showInfo(message) {
+  showNotification(message, "info");
+}
+
 function showNotification(message, type) {
   // Create notification element
   const notification = document.createElement("div");
@@ -428,26 +456,48 @@ function showNotification(message, type) {
         top: 20px;
         right: 20px;
         padding: 15px 20px;
-        border-radius: 5px;
+        border-radius: 8px;
         color: white;
         font-weight: 600;
         z-index: 10000;
         animation: slideIn 0.3s ease-out;
-        max-width: 300px;
+        max-width: 350px;
         word-wrap: break-word;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     `;
 
-  if (type === "success") {
-    notification.style.background = "#28a745";
-  } else {
-    notification.style.background = "#dc3545";
+  // Set background color based on type
+  switch (type) {
+    case "success":
+      notification.style.background = "var(--success-color, #28a745)";
+      break;
+    case "error":
+      notification.style.background = "var(--error-color, #dc3545)";
+      break;
+    case "info":
+      notification.style.background = "var(--info-color, #17a2b8)";
+      break;
+    default:
+      notification.style.background = "#6c757d";
   }
 
-  notification.textContent = message;
+  // Add icon based on type
+  const icons = {
+    success: "fas fa-check-circle",
+    error: "fas fa-exclamation-circle",
+    info: "fas fa-info-circle",
+  };
 
-  // Add animation styles
-  const style = document.createElement("style");
-  style.textContent = `
+  notification.innerHTML = `
+    <i class="${icons[type] || "fas fa-bell"}"></i>
+    <span style="margin-left: 8px;">${message}</span>
+  `;
+
+  // Add animation styles if not already added
+  if (!document.getElementById("notification-styles")) {
+    const style = document.createElement("style");
+    style.id = "notification-styles";
+    style.textContent = `
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
@@ -457,11 +507,12 @@ function showNotification(message, type) {
             to { transform: translateX(100%); opacity: 0; }
         }
     `;
-  document.head.appendChild(style);
+    document.head.appendChild(style);
+  }
 
   document.body.appendChild(notification);
 
-  // Remove notification after 3 seconds
+  // Remove notification after 4 seconds
   setTimeout(() => {
     notification.style.animation = "slideOut 0.3s ease-out";
     setTimeout(() => {
@@ -469,5 +520,13 @@ function showNotification(message, type) {
         notification.parentNode.removeChild(notification);
       }
     }, 300);
-  }, 3000);
+  }, 4000);
 }
+
+// Make functions globally available
+window.showSuccess = showSuccess;
+window.showError = showError;
+window.showInfo = showInfo;
+window.showNotification = showNotification;
+window.loadMedia = loadMedia;
+window.mediaItems = mediaItems;

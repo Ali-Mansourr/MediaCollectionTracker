@@ -1,7 +1,7 @@
 {
   "name": "mediacollectiontracker",
-  "version": "1.0.0",
-  "description": "A personal media collection tracker for movies, music, and games",
+  "version": "2.0.0",
+  "description": "A personal media collection tracker for movies, music, and games with AI recommendations and user profiles",
   "main": "server.js",
   "engines": {
     "node": ">=14.0.0",
@@ -19,7 +19,10 @@
     "tracker",
     "movies",
     "music",
-    "games"
+    "games",
+    "ai",
+    "recommendations",
+    "profiles"
   ],
   "author": "",
   "license": "ISC",
